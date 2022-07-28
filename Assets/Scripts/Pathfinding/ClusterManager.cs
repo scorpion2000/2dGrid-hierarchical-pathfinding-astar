@@ -21,6 +21,7 @@ public class ClusterManager : MonoBehaviour
     int bottomY;
 
     public Dictionary<Vector2, Cluster> clusterNodes = new Dictionary<Vector2, Cluster>();
+    public event Action ClusteringComplete;
 
     private void Awake()
     {
@@ -247,7 +248,7 @@ public class ClusterManager : MonoBehaviour
                     Cluster neighbourCluster;
 
                     Node newSymNode;
-                    Node newNode = cluster.AddEntranceNode(foundEntrance.entrance.worldPos);
+                    Node newNode = cluster.AddEntranceNode(foundEntrance.entrance);
                     //Debug.Log(newNode.worldPos);
                     if (!clusterNodes.ContainsKey(foundEntrance.entrance.worldPos))
                         clusterNodes.Add(foundEntrance.entrance.worldPos, cluster);
@@ -258,7 +259,7 @@ public class ClusterManager : MonoBehaviour
                     {
                         case 0:
                             neighbourCluster = clusters[(int)clusterPos.x / clusterSize - 1, (int)clusterPos.y / clusterSize];
-                            newSymNode = neighbourCluster.AddEntranceNode(foundEntrance.symEntrance.worldPos);
+                            newSymNode = neighbourCluster.AddEntranceNode(foundEntrance.symEntrance);
                             if (!clusterNodes.ContainsKey(foundEntrance.symEntrance.worldPos))
                                 clusterNodes.Add(foundEntrance.symEntrance.worldPos, neighbourCluster);
 
@@ -270,7 +271,7 @@ public class ClusterManager : MonoBehaviour
                             break;
                         case 1:
                             neighbourCluster = clusters[(int)clusterPos.x / clusterSize + 1, (int)clusterPos.y / clusterSize];
-                            newSymNode = neighbourCluster.AddEntranceNode(foundEntrance.symEntrance.worldPos);
+                            newSymNode = neighbourCluster.AddEntranceNode(foundEntrance.symEntrance);
                             if (!clusterNodes.ContainsKey(foundEntrance.symEntrance.worldPos))
                                 clusterNodes.Add(foundEntrance.symEntrance.worldPos, neighbourCluster);
 
@@ -282,7 +283,7 @@ public class ClusterManager : MonoBehaviour
                             break;
                         case 2:
                             neighbourCluster = clusters[(int)clusterPos.x / clusterSize, (int)clusterPos.y / clusterSize - 1];
-                            newSymNode = neighbourCluster.AddEntranceNode(foundEntrance.symEntrance.worldPos);
+                            newSymNode = neighbourCluster.AddEntranceNode(foundEntrance.symEntrance);
                             if (!clusterNodes.ContainsKey(foundEntrance.symEntrance.worldPos))
                                 clusterNodes.Add(foundEntrance.symEntrance.worldPos, neighbourCluster);
 
@@ -294,7 +295,7 @@ public class ClusterManager : MonoBehaviour
                             break;
                         case 3:
                             neighbourCluster = clusters[(int)clusterPos.x / clusterSize, (int)clusterPos.y / clusterSize + 1];
-                            newSymNode = neighbourCluster.AddEntranceNode(foundEntrance.symEntrance.worldPos);
+                            newSymNode = neighbourCluster.AddEntranceNode(foundEntrance.symEntrance);
                             if (!clusterNodes.ContainsKey(foundEntrance.symEntrance.worldPos))
                                 clusterNodes.Add(foundEntrance.symEntrance.worldPos, neighbourCluster);
 
@@ -535,6 +536,9 @@ public class ClusterManager : MonoBehaviour
                 yield return new WaitForSeconds(0.01f);
             }
         }
+
+        yield return new WaitForSeconds(0.5f);
+        ClusteringComplete?.Invoke();
     }
 
     private void ConnectEntrances(Cluster cluster)
@@ -584,13 +588,21 @@ public class ClusterManager : MonoBehaviour
         clusters[(int)cluster.GetClusterVectorPos.x / clusterSize, (int)cluster.GetClusterVectorPos.y / clusterSize] = cluster;
     }
 
-    public List<Node> GetConnectedNodes(Node node)
+    public List<Node> GetConnectedNodes(Node node, Node nodeCheck)
     {
         Cluster cluster;
         if (clusterNodes.ContainsKey(node.worldPos))
             cluster = clusterNodes[node.worldPos];
         else
-            cluster = clusters[(int)node.gridX / clusterSize, (int)node.gridY / clusterSize];
+            cluster = GetClusterByNode(node);
+
+        if (GetClusterByNode(nodeCheck) == cluster)
+        {
+            List<Node> nodes = GetConnectedNodes(node, cluster);
+            nodes.Add(nodeCheck);
+
+            return nodes;
+        }
 
         return GetConnectedNodes(node, cluster);
     }
@@ -608,7 +620,21 @@ public class ClusterManager : MonoBehaviour
 
     public Cluster GetClusterByNode(Node node)
     {
-        return clusters[(int)node.gridX / clusterSize, (int)node.gridY / clusterSize];
+        return clusters[Mathf.FloorToInt(node.gridX / clusterSize), Mathf.FloorToInt(node.gridY / clusterSize)];
+    }
+
+    public bool CheckIfNeighbourCluster(Node nodeA, Node nodeB)
+    {
+        Cluster clusterA = GetClusterByNode(nodeA);
+        Cluster clusterB = GetClusterByNode(nodeB);
+
+        int x = Mathf.Abs((int)clusterA.GetClusterVectorPos.x - (int)clusterB.GetClusterVectorPos.x) / clusterSize;
+        int y = Mathf.Abs((int)clusterA.GetClusterVectorPos.y - (int)clusterB.GetClusterVectorPos.y) / clusterSize;
+
+        if (x <= 1 && y <= 1)
+            return true;
+        else
+            return false;
     }
 
     //Might not actually need such a function

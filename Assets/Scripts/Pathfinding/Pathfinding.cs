@@ -12,7 +12,7 @@ public class Pathfinding : MonoBehaviour
     private void Awake()
     {
         grid = GetComponent<Grid>();
-        clusterManager = GetComponent<ClusterManager>();
+        clusterManager = FindObjectOfType<ClusterManager>();
     }
 
     public void FindPath(PathRequest request, Action<PathResult> callback)
@@ -29,6 +29,15 @@ public class Pathfinding : MonoBehaviour
 
         Node startNode = grid.NodeFromWorldPoint(request.pathStart);
         Node targetNode = grid.NodeFromWorldPoint(request.pathEnd);
+
+        if (request.clusterSearch && clusterManager.CheckIfNeighbourCluster(startNode, targetNode))
+        {
+            Vector2[] newWaypoints = new Vector2[2];
+            newWaypoints[0] = startNode.worldPos;
+            newWaypoints[1] = targetNode.worldPos;
+            callback(new PathResult(newWaypoints, true, 0, request.clusterSearch, request.callback));
+            return;
+        }
 
         startNode.gCost = 0;
 
@@ -54,6 +63,11 @@ public class Pathfinding : MonoBehaviour
                 openSet.Remove(currentNode);*/
                 closeSet.Add(currentNode);
 
+                /*if (request.clusterSearch)
+                {
+                    if (clusterManager.GetClusterByNode(currentNode))
+                }*/
+
                 if (currentNode == targetNode)
                 {
                     //sw.Stop();
@@ -62,24 +76,54 @@ public class Pathfinding : MonoBehaviour
                     break;
                 }
 
-                foreach (Node neighbour in grid.GetNeigbours(currentNode, newPathGrid))
+                List<Node> neighbourNodeList;
+                if (request.clusterSearch)
+                    neighbourNodeList = clusterManager.GetConnectedNodes(currentNode, targetNode);
+                else
+                    neighbourNodeList = grid.GetNeigbours(currentNode, newPathGrid);
+
+                foreach (Node neighbour in neighbourNodeList)
                 {
+                    if (neighbour != targetNode)
+                        if (request.clusterSearch && closeSet.Contains(clusterManager.GetClusterByNode(neighbour).GetClusterSymEntrance(neighbour)))
+                            continue;
+
                     if (!neighbour.walkable || closeSet.Contains(neighbour))
                     {
                         continue;
                     }
 
-                    int newCostToNeighbour = currentNode.gCost + GetDistance(currentNode, neighbour) + neighbour.movementPenalty;
-                    if (newCostToNeighbour < neighbour.gCost || !openSet.Contains(neighbour))
-                    {
-                        neighbour.gCost = newCostToNeighbour;
-                        neighbour.hCost = GetDistance(neighbour, targetNode);
-                        neighbour.parent = currentNode;
+                    int newCostToNeighbour;
 
-                        if (!openSet.Contains(neighbour))
-                            openSet.Add(neighbour);
+                    if (request.clusterSearch)
+                    {
+                        if (currentNode == startNode || neighbour == targetNode)
+                            newCostToNeighbour = currentNode.gCost + GetDistance(currentNode, neighbour);
                         else
-                            openSet.UpdateItem(neighbour);
+                            newCostToNeighbour = currentNode.gCost + Mathf.FloorToInt(clusterManager.GetClusterByNode(currentNode).GetConnectionCost(currentNode, neighbour));
+                    } else
+                    {
+                        newCostToNeighbour = currentNode.gCost + GetDistance(currentNode, neighbour) + neighbour.movementPenalty;
+                    }
+
+                    Node neighbourToAdd;
+                    if (request.clusterSearch && neighbour != targetNode)
+                        neighbourToAdd = clusterManager.GetClusterByNode(neighbour).GetClusterSymEntrance(neighbour);
+                    else
+                        neighbourToAdd = neighbour;
+
+
+                    if (newCostToNeighbour < neighbour.gCost || !openSet.Contains(neighbourToAdd))
+                    {
+                        closeSet.Add(neighbour);
+                        neighbourToAdd.gCost = newCostToNeighbour;
+                        neighbourToAdd.hCost = GetDistance(neighbour, targetNode);
+                        neighbourToAdd.parent = currentNode;
+
+                        if (!openSet.Contains(neighbourToAdd))
+                            openSet.Add(neighbourToAdd);
+                        else
+                            openSet.UpdateItem(neighbourToAdd);
                     }
                 }
             }
@@ -87,7 +131,7 @@ public class Pathfinding : MonoBehaviour
         if (pathSuccess)
         {
             //waypoints = RetracePath(startNode, targetNode);
-            RetracedPath retracedPath = RetracePath(startNode, targetNode);
+            RetracedPath retracedPath = RetracePath(startNode, targetNode, request.clusterSearch);
             waypoints = retracedPath.waypoints;
             pathCost = retracedPath.pathCost;
             pathSuccess = waypoints.Length > 0;
@@ -95,22 +139,31 @@ public class Pathfinding : MonoBehaviour
         callback(new PathResult(waypoints, pathSuccess, pathCost, request.clusterSearch, request.callback));
     }
 
-    private RetracedPath RetracePath(Node startNode, Node endNode)
+    private RetracedPath RetracePath(Node startNode, Node endNode, bool simplify)
     {
         List<Node> path = new List<Node>();
+        List<Vector2> vectors = new List<Vector2>();
         Node currentNode = endNode;
         RetracedPath retracedPath = new RetracedPath();
         float pathCost = endNode.gCost;
 
         while (currentNode != startNode)
         {
-            path.Add(currentNode);
+            if (!simplify)
+                path.Add(currentNode);
+            else
+                vectors.Add(currentNode.worldPos);
             currentNode = currentNode.parent;
         }
         path.Add(startNode);
+        if (simplify)
+            Debug.Log(vectors.Count);
 
         retracedPath.pathCost = pathCost;
-        retracedPath.waypoints = SimplifyPath(path);
+        if (!simplify)
+            retracedPath.waypoints = SimplifyPath(path);
+        else
+            retracedPath.waypoints = vectors.ToArray();
         Array.Reverse(retracedPath.waypoints);
         return retracedPath;
     }

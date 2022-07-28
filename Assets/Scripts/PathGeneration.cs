@@ -7,6 +7,7 @@ public class PathGeneration : MonoBehaviour
     Unit unit;
     //PerlinNoiseMap perlinNoiseMap;
     TerrainGenerator terrain;
+    ClusterManager clusterManager;
 
     int worldHeight;
     int worldBottom;
@@ -16,9 +17,10 @@ public class PathGeneration : MonoBehaviour
     void Awake()
     {
         terrain = FindObjectOfType<TerrainGenerator>();
+        clusterManager = FindObjectOfType<ClusterManager>();
         unit = GetComponent<Unit>();
 
-        terrain.terrainGenerationComplete += StartPathfinding;
+        clusterManager.ClusteringComplete += StartPathfinding;
         unit.pathfindFailed += FindNewTarget;
         unit.pathFinished += FindNewTarget;
 
@@ -28,7 +30,7 @@ public class PathGeneration : MonoBehaviour
 
     public void StartPathfinding()
     {
-        terrain.terrainGenerationComplete -= StartPathfinding;
+        clusterManager.ClusteringComplete -= StartPathfinding;
         FindNewTarget();
         //StartCoroutine(CreateNewTarget());
     }

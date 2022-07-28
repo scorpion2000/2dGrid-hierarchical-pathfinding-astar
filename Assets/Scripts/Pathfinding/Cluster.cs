@@ -51,9 +51,9 @@ public class Cluster
         }
     }
 
-    public Node AddEntranceNode(Vector2 position)
+    public Node AddEntranceNode(Node node)
     {
-        Node newNode = new Node(true, position, (int)position.x, (int)position.y, 0, 1);
+        Node newNode = new Node(true, node.worldPos, node.gridX, node.gridY, 0, 1);
         EntranceNode newEntranceNode = new EntranceNode();
         newEntranceNode.entrace = newNode;
         newEntranceNode.connectedNodeValues = new Dictionary<Node, float>();
@@ -137,6 +137,7 @@ public class Cluster
 
     public float GetConnectionCost(Node fromNode, Node toNode)
     {
+        //Debug.Log(entranceNodes[fromNode].connectedNodeValues.ContainsKey(toNode));
         return entranceNodes[fromNode].connectedNodeValues[toNode];
     }
 

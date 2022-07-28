@@ -9,6 +9,8 @@ public class Unit : MonoBehaviour
     //public Transform target;
     float speed = 5f;
     Vector2[] path;
+    Vector2[] clusterPath;
+    int clusterIndex;
     int targetIndex;
 
     public event Action pathFinished;
@@ -25,16 +27,37 @@ public class Unit : MonoBehaviour
         PathRequestManager.RequestPath(new PathRequest(transform.position, position, null, true, OnPathFound));
     }
 
+    private void FollowClusterPath()
+    {
+        if (clusterIndex < clusterPath.Length)
+        {
+            PathRequestManager.RequestPath(new PathRequest(transform.position, clusterPath[clusterIndex], null, false, OnPathFound));
+            clusterIndex++;
+        } else
+        {
+            clusterIndex = 0;
+            pathfindFailed?.Invoke();
+        }
+    }
+
     public void OnPathFound(Vector2[] newPath, bool pathSuccessful, float pathCost, bool clusterSearch)
     {
         if (pathSuccessful)
         {
-            path = newPath;
-            StopCoroutine("FollowPath");
-            StartCoroutine("FollowPath");
+            if (clusterSearch)
+            {
+                clusterPath = newPath;
+                FollowClusterPath();
+            } else
+            {
+                path = newPath;
+                StopCoroutine("FollowPath");
+                StartCoroutine("FollowPath");
+            }
         } else
         {
-            pathfindFailed?.Invoke();
+            //pathfindFailed?.Invoke();
+            FollowClusterPath();
         }
     }
 
@@ -68,8 +91,8 @@ public class Unit : MonoBehaviour
         {
             for (int i = targetIndex; i < path.Length; i++)
             {
-                Gizmos.color = Color.black;
-                Gizmos.DrawCube(path[i], Vector2.one);
+                Gizmos.color = Color.red;
+                Gizmos.DrawCube(path[i], Vector2.one / 2);
 
                 if (i == targetIndex)
                     Gizmos.DrawLine(transform.position, path[i]);
