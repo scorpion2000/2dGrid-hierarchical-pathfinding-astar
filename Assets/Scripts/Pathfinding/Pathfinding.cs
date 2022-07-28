@@ -156,8 +156,6 @@ public class Pathfinding : MonoBehaviour
             currentNode = currentNode.parent;
         }
         path.Add(startNode);
-        if (simplify)
-            Debug.Log(vectors.Count);
 
         retracedPath.pathCost = pathCost;
         if (!simplify)

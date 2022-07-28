@@ -56,8 +56,7 @@ public class Unit : MonoBehaviour
             }
         } else
         {
-            //pathfindFailed?.Invoke();
-            FollowClusterPath();
+            pathfindFailed?.Invoke();
         }
     }
 
@@ -73,7 +72,7 @@ public class Unit : MonoBehaviour
                 targetIndex++;
                 if (targetIndex >= path.Length)
                 {
-                    pathFinished?.Invoke();
+                    FollowClusterPath();
                     yield break;
                 }
 
