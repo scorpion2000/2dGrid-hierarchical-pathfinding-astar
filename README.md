@@ -11,7 +11,7 @@ The base A* implementation is all thanks to Sebastian Lague (look him up on yout
 Note that I did not implement his path smoothing algorithm into my own pathfinder.
 
 As for the Hierarchical Pathfinding, big thanks to this paper ( https://webdocs.cs.ualberta.ca/~mmueller/ps/hpastar.pdf ). The implementation loosely came from this.
-Tt should've been easier to implement HPA*, and I'm pretty sure I've over engineered it to hell and beyond.
+It should've been easier to implement HPA*, and I'm pretty sure I've over engineered it to hell and beyond.
 
 And lastly, please note that this implementation works with a randomly generated map. I'm also planning to extend the functionality so that the grid/clusters react to changes in the world map.
 It works, but it may take a while to generate a larger map. On the other hand, this code should be able to work with any map size (limited by your computer)
