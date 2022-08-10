@@ -23,7 +23,6 @@ public class TerrainEditor : MonoBehaviour
             Node node = grid.NodeFromWorldPoint(Camera.main.ScreenToWorldPoint(Input.mousePosition));
             node.SetWalkable = (terrainIndex == 3) ? false : true;
             node.movementPenalty = terrainIndex * 5;
-            Debug.Log(node.gridX + " ; " + node.gridY);
 
             grid.UpdateNode(node, terrainIndex);
         }

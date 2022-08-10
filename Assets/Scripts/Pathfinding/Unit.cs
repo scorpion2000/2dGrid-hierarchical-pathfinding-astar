@@ -12,8 +12,10 @@ public class Unit : MonoBehaviour
     float speed = 5f;
     Vector2[] path;
     Vector2[] clusterPath;
+    Vector2 heading;
     int clusterIndex;
     int targetIndex;
+    Cluster currentCluster;
 
     public event Action pathFinished;
     public event Action pathfindFailed;
@@ -21,17 +23,22 @@ public class Unit : MonoBehaviour
     private void Start()
     {
         clusterManager = FindObjectOfType<ClusterManager>();
+        clusterManager.ClusterUpdating += HandleClusterUpdating;
+        clusterManager.ClusterUpdated += HandleClusterUpdated;
         //FindPath(target);
     }
 
-    public void FindPath(Vector2 position)
+    public IEnumerator FindPath(Vector2 position)
     {
+        yield return new WaitForSeconds(UnityEngine.Random.Range(0, 1));
         StopCoroutine("FollowPath");
+        heading = position;
         PathRequestManager.RequestPath(new PathRequest(transform.position, position, null, true, OnPathFound));
     }
 
     private void FollowClusterPath()
     {
+        currentCluster = clusterManager.GetClusterByPos(transform.position);
         if (clusterIndex < clusterPath.Length)
         {
             PathRequestManager.RequestPath(new PathRequest(transform.position, clusterPath[clusterIndex], null, false, OnPathFound));
@@ -39,7 +46,7 @@ public class Unit : MonoBehaviour
         } else
         {
             clusterIndex = 0;
-            pathfindFailed?.Invoke();
+            pathFinished?.Invoke();
         }
     }
 
@@ -85,6 +92,32 @@ public class Unit : MonoBehaviour
             transform.position = Vector2.MoveTowards(transform.position, currentWaypoint, speed * Time.deltaTime);
             yield return null;
         }
+    }
+
+    private void HandleClusterUpdating(Cluster cluster)
+    {
+        if (currentCluster == cluster)
+            StopCoroutine("FollowPath");
+    }
+
+    private void HandleClusterUpdated(Cluster cluster)
+    {
+        if (currentCluster == cluster)
+        {
+            StopCoroutine("FollowPath");
+            StartCoroutine(FindPath(heading));
+        }
+        /*else
+        {
+            foreach (Vector2 vector in clusterPath)
+            {
+                if (clusterManager.GetClusterByPos(vector) == cluster)
+                {
+                    StopCoroutine("FollowPath");
+                    FindPath(heading);
+                }
+            }
+        }*/
     }
 
     public void OnDrawGizmos()

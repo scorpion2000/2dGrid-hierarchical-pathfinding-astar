@@ -21,8 +21,8 @@ public class PathGeneration : MonoBehaviour
         unit = GetComponent<Unit>();
 
         clusterManager.ClusteringComplete += StartPathfinding;
-        unit.pathfindFailed += FindNewTarget;
-        unit.pathFinished += FindNewTarget;
+        unit.pathfindFailed += StartPathfinding;
+        unit.pathFinished += StartPathfinding;
 
         worldHeight = 0 + terrain.mapHeight * terrain.GetChunkSize;
         worldWidth = 0 + terrain.mapWidth * terrain.GetChunkSize;
@@ -31,13 +31,13 @@ public class PathGeneration : MonoBehaviour
     public void StartPathfinding()
     {
         clusterManager.ClusteringComplete -= StartPathfinding;
-        FindNewTarget();
+        StartCoroutine(FindNewTarget());
         //StartCoroutine(CreateNewTarget());
     }
 
-    private void FindNewTarget()
+    private IEnumerator FindNewTarget()
     {
-        //yield return new WaitForSeconds(Random.Range(1, 6));
+        yield return new WaitForSeconds(Random.Range(1, 6));
 
         Vector2 pathTo = new Vector2(Random.Range(0 - worldHeight / 2, worldHeight/2), Random.Range(0 - worldWidth / 2, worldWidth/2));
         while (pathTo == (Vector2)transform.position)
@@ -45,7 +45,7 @@ public class PathGeneration : MonoBehaviour
             pathTo = new Vector2(Random.Range(0 - worldHeight / 2, worldHeight / 2), Random.Range(0 - worldWidth / 2, worldWidth / 2));
         }
 
-        unit.FindPath(pathTo);
+        StartCoroutine(unit.FindPath(pathTo));
     }
 
     /*private IEnumerator CreateNewTarget()
