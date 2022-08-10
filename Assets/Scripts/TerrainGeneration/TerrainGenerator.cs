@@ -30,6 +30,7 @@ public class TerrainGenerator : MonoBehaviour
     List<Vector2> chunkLocations = new List<Vector2>();
 
     public event Action terrainGenerationComplete;
+    public event Action<Vector2, int, int, int> terrainUpdated;
 
     public Dictionary<Vector2, TerrainChunk> GetTerrainChunks { get { return terrainChunks; } }
     public Dictionary<int, GameObject> GetTileset { get { return tileset; } }
@@ -117,6 +118,18 @@ public class TerrainGenerator : MonoBehaviour
         return Mathf.FloorToInt(scaledPerlin);
     }
 
+    public void UpdateChunkByGridPos(int x, int y, int terrainIndex)
+    {
+        int chunkPosX = x / chunkSize;
+        int chunkPosY = y / chunkSize;
+
+        TerrainChunk terrainChunk = terrainChunks[new Vector2(chunkPosX * chunkSize, chunkPosY * chunkSize)];
+        terrainChunk.UpdateTerrainValue(x % chunkSize * chunkSize + y % chunkSize, terrainIndex);
+        terrainChunks[new Vector2(chunkPosX * chunkSize, chunkPosY * chunkSize)] = terrainChunk;
+
+        terrainUpdated?.Invoke(new Vector2(chunkPosX * chunkSize, chunkPosY * chunkSize), x % chunkSize, y % chunkSize, terrainIndex);
+    }
+
     public Vector2 GetTerrainChunkFromWorldPos(Vector2 _worldPos)
     {
         int divisorX = 0 - (mapWidth * chunkSize) / 2;
@@ -139,4 +152,9 @@ public struct TerrainChunk
     }
 
     public List<int> GetTerrainValues { get { return terrainValues; } }
+    
+    public void UpdateTerrainValue(int index, int value)
+    {
+        terrainValues[index] = value;
+    }
 }

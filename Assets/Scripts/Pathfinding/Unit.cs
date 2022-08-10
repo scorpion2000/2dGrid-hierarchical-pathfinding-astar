@@ -5,6 +5,8 @@ using UnityEngine;
 
 public class Unit : MonoBehaviour
 {
+    ClusterManager clusterManager;
+
     public bool drawGizmos;
     //public Transform target;
     float speed = 5f;
@@ -18,6 +20,7 @@ public class Unit : MonoBehaviour
 
     private void Start()
     {
+        clusterManager = FindObjectOfType<ClusterManager>();
         //FindPath(target);
     }
 

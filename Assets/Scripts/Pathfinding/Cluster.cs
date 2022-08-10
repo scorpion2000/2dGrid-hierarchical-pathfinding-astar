@@ -6,6 +6,7 @@ public class Cluster
 {
     Dictionary<Node, EntranceNode> entranceNodes = new Dictionary<Node, EntranceNode>();
     List<Entrance> entrances = new List<Entrance>();
+    Node[,] clusterNodeList;
 
     public int posX;
     public int posY;
@@ -20,8 +21,8 @@ public class Cluster
         gridPosBtmLeft = _gridPosBtmLeft;
         gridPosTopRight = _gridPosTopRight;
 }
-
     public Vector2 GetClusterVectorPos { get { return new Vector2(posX, posY); } }
+    public Node[,] GetClusterNodeList { get { return clusterNodeList; } }
     public List<Entrance> GetClusterEntrances { get { return entrances; } }
     //for gizmos draws
     public List<Node> GetEntranceNodes { 
@@ -90,13 +91,14 @@ public class Cluster
 
     public void RemoveEntrance(Node node)
     {
-        foreach (var entrance in entranceNodes)
+        List<Node> keys = new List<Node>(entranceNodes.Keys);
+        foreach (Node key in keys)
         {
-            if (entrance.Key == node) continue;
+            if (key == node) continue;
 
-            EntranceNode entranceNode = entranceNodes[entrance.Key];
-            //entranceNode.connectedNodeValues.Remove(node.worldPos);
-            entranceNodes[entrance.Key] = entranceNode;
+            EntranceNode entranceNode = entranceNodes[key];
+            entranceNode.connectedNodeValues.Remove(node);
+            entranceNodes[key] = entranceNode;
         }
 
         entranceNodes.Remove(node);
@@ -113,7 +115,22 @@ public class Cluster
         entrance.existingNodesInEntrance.Add(node);
     }
 
-    public Node[] CheckForExistingEntranceNodeByPos(Vector2 position)
+    public void RemoveAllNodesFromEntrance(Entrance entrance)
+    {
+        foreach (Node node in entrance.existingNodesInEntrance)
+        {
+            RemoveEntrance(node);
+        }
+
+        entrance.existingNodesInEntrance.Clear();
+    }
+
+    public void UpdateClusterNodeList(Node[,] nodes)
+    {
+        clusterNodeList = nodes;
+    }
+
+    public Node[] GetExistingEntranceNodeByPos(Vector2 position)
     {
         List<Node> nodeList = new List<Node>();
         foreach (var entranceNodes in entranceNodes)
@@ -158,6 +175,40 @@ public class Cluster
     public bool FindNodeInCluster(Node node)
     {
         return entranceNodes.ContainsKey(node);
+    }
+
+    public List<Entrance> GetEntrancesByPos(Vector2 pos)
+    {
+        List<Entrance> entranceList = new List<Entrance>();
+        foreach (Entrance entrance in entrances)
+        {
+            if (entrance.entrancePositions.Contains(pos))
+                entranceList.Add(entrance);
+        }
+
+        return entranceList;
+    }
+
+    public Entrance GetEntranceByNode(Node node)
+    {
+        foreach (Entrance entrance in entrances)
+        {
+            if (entrance.existingNodesInEntrance.Contains(node))
+                return entrance;
+        }
+
+        return new Entrance();
+    }
+
+    public Node GetNodeBySymNodePos(Vector2 fromPos, Vector2 toPos)
+    {
+        foreach (Node node in entranceNodes.Keys)
+        {
+            if (node.worldPos == toPos && entranceNodes[node].symEntrance.worldPos == fromPos)
+                return node;
+        }
+
+        return null;
     }
 }
 

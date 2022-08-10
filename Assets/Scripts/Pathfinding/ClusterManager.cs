@@ -22,6 +22,8 @@ public class ClusterManager : MonoBehaviour
 
     public Dictionary<Vector2, Cluster> clusterNodes = new Dictionary<Vector2, Cluster>();
     public event Action ClusteringComplete;
+    public event Action<Cluster> ClusterUpdating;
+    public event Action<Cluster> ClusterUpdated;
 
     private void Awake()
     {
@@ -34,6 +36,7 @@ public class ClusterManager : MonoBehaviour
     private void ClusterManagerSetup()
     {
         terrain.terrainGenerationComplete -= ClusterManagerSetup;
+        SubToGridChanges(true);
         nodeGrid = grid.GetGrid;
 
         clusterSize = terrain.GetChunkSize;
@@ -176,12 +179,16 @@ public class ClusterManager : MonoBehaviour
 
         foreach (Entrance entrance in clusterEntrances)
         {
-            bool skip = false;
+            // IDK what was the logic behind this
+            /*bool skip = false;
             foreach (Node entranceNode in cluster.GetEntranceNodes)
             {
                 if (entrance.existingNodesInEntrance.Count != 0 && entrance.existingNodesInEntrance.Contains(entranceNode)) skip = true;
             }
-            if (skip) continue;
+            if (skip) continue;*/
+
+            if (entrance.existingNodesInEntrance.Count != 0)
+                continue;
 
             List<GenEntrance> foundEntrances = new List<GenEntrance>();
             GenEntrance genEntrance = new GenEntrance();
@@ -544,14 +551,22 @@ public class ClusterManager : MonoBehaviour
     private void ConnectEntrances(Cluster cluster)
     {
         if (cluster.GetEntranceNodes == null) return;
-        Node[,] clusterNodes = new Node[clusterSize,clusterSize];
+        Node[,] clusterNodes = new Node[clusterSize, clusterSize];
 
-        for (int x = 0; x < clusterSize; x++)
+        if (cluster.GetClusterNodeList == null)
         {
-            for (int y = 0; y < clusterSize; y++)
+            for (int x = 0; x < clusterSize; x++)
             {
-                clusterNodes[x,y] = nodeGrid[(int)cluster.GetClusterVectorPos.x + x, (int)cluster.GetClusterVectorPos.y + y];
+                for (int y = 0; y < clusterSize; y++)
+                {
+                    clusterNodes[x, y] = nodeGrid[(int)cluster.GetClusterVectorPos.x + x, (int)cluster.GetClusterVectorPos.y + y];
+                }
             }
+            cluster.UpdateClusterNodeList(clusterNodes);
+        }
+        else
+        {
+            clusterNodes = cluster.GetClusterNodeList;
         }
 
         foreach (Node entranceNode in cluster.GetEntranceNodes)
@@ -575,14 +590,14 @@ public class ClusterManager : MonoBehaviour
                 (vector.x < cluster.gridPosBtmLeft.x || vector.x > cluster.gridPosTopRight.x) ||
                 (vector.y < cluster.gridPosBtmLeft.y || vector.y > cluster.gridPosTopRight.y)
             ) {
-                Debug.Log("Path is outside the cluster");
+                //Debug.Log("Path is outside the cluster");
                 return;
             }
         }
 
         cluster.MakeNodeConnection(
-            cluster.CheckForExistingEntranceNodeByPos(newPath[0]),
-            cluster.CheckForExistingEntranceNodeByPos(newPath[newPath.Length - 1]),
+            cluster.GetExistingEntranceNodeByPos(newPath[0]),
+            cluster.GetExistingEntranceNodeByPos(newPath[newPath.Length - 1]),
             pathCost
         );
         clusters[(int)cluster.GetClusterVectorPos.x / clusterSize, (int)cluster.GetClusterVectorPos.y / clusterSize] = cluster;
@@ -637,11 +652,78 @@ public class ClusterManager : MonoBehaviour
             return false;
     }
 
-    //Might not actually need such a function
-    /*public Cluster FindClusterByPosition(Vector2 pos)
+    private void SubToGridChanges(bool subscribe)
     {
+        if (subscribe)
+            grid.gridNodeUpdated += HandleGridChange;
+        else
+            grid.gridNodeUpdated -= HandleGridChange;
+    }
 
-    }*/
+    public Cluster GetClusterByPos(Vector2 pos)
+    {
+        return GetClusterByNode(grid.NodeFromWorldPoint(pos));
+    }
+
+    private void HandleGridChange(Node node)
+    {
+        if (!node.walkable)
+        {
+            if (clusterNodes.ContainsKey(node.worldPos))
+            {
+                ClusterUpdating?.Invoke(clusterNodes[node.worldPos]);
+                List<Entrance> entrances = clusterNodes[node.worldPos].GetEntrancesByPos(node.worldPos);
+                List<Cluster> updatedClusters = new List<Cluster>();
+                updatedClusters.Add(clusterNodes[node.worldPos]);
+                foreach (Entrance entrance in entrances)
+                {
+                    Node entranceNode = entrance.existingNodesInEntrance[0];
+
+                    ClusterUpdating?.Invoke(clusterNodes[entranceNode.worldPos]);
+
+                    Node fakeSymNode = clusterNodes[entranceNode.worldPos].GetClusterSymEntrance(entranceNode);
+                    Node realSymNode = clusterNodes[fakeSymNode.worldPos].GetNodeBySymNodePos(entranceNode.worldPos, fakeSymNode.worldPos);
+                    if (realSymNode == null) Debug.Log("fuck");
+                    clusterNodes[realSymNode.worldPos].RemoveAllNodesFromEntrance(clusterNodes[realSymNode.worldPos].GetEntranceByNode(realSymNode));
+                    if (!updatedClusters.Contains(clusterNodes[realSymNode.worldPos]))
+                        updatedClusters.Add(clusterNodes[realSymNode.worldPos]);
+
+                    clusterNodes[node.worldPos].RemoveAllNodesFromEntrance(entrance);
+                }
+
+                /*foreach (Entrance entrance in symEntrances)
+                {
+                    clusterNodes[entrance.existingNodesInEntrance[0].worldPos].RemoveAllNodesFromEntrance(entrance);
+                }*/
+
+                CreateEntranceNodes(clusterNodes[node.worldPos]);
+                foreach (Cluster cluster in updatedClusters)
+                {
+                    ConnectEntrances(cluster);
+                    ClusterUpdated?.Invoke(cluster);
+                }
+            }
+            else
+            {
+                RegenerateClusterConnections(node);
+            }
+        }
+        else
+        {
+            // Unwalkable changes could occur frequently. Imagine a game about war. Let's say, and artillery hits and
+            // changes about 5x5 tiles, but all in the same cluster. We shouldn't recalculate paths 5x5 times, but only once.
+            // Should create a buffer for this instead
+            //RegenerateClusterConnections(node);
+        }
+    }
+
+    private void RegenerateClusterConnections(Node node)
+    {
+        Cluster cluster = GetClusterByNode(node);
+        ClusterUpdating?.Invoke(cluster);
+        ConnectEntrances(cluster);
+        ClusterUpdated?.Invoke(cluster);
+    }
 
     public void OnDrawGizmos()
     {

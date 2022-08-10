@@ -37,13 +37,14 @@ public class PathGeneration : MonoBehaviour
 
     private void FindNewTarget()
     {
+        //yield return new WaitForSeconds(Random.Range(1, 6));
+
         Vector2 pathTo = new Vector2(Random.Range(0 - worldHeight / 2, worldHeight/2), Random.Range(0 - worldWidth / 2, worldWidth/2));
         while (pathTo == (Vector2)transform.position)
         {
             pathTo = new Vector2(Random.Range(0 - worldHeight / 2, worldHeight / 2), Random.Range(0 - worldWidth / 2, worldWidth / 2));
         }
 
-        //Debug.Log(pathTo);
         unit.FindPath(pathTo);
     }
 

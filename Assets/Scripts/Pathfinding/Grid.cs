@@ -17,12 +17,14 @@ public class Grid : MonoBehaviour
 
     Node[,] grid;
 
+    bool generationComplete = false;
     float nodeDiameter;
     int gridSizeX, gridSizeY;
     public int MaxSize { get { return gridSizeX * gridSizeY; } }
     public Node[,] GetGrid { get { return grid; } }
 
     public event Action mapGenerationComplete;
+    public event Action<Node> gridNodeUpdated;
 
     [System.Serializable]
     public class TerrainType
@@ -34,6 +36,7 @@ public class Grid : MonoBehaviour
     private void Awake()
     {
         terrain = FindObjectOfType<TerrainGenerator>();
+        terrain.terrainGenerationComplete += HandleGenerationComplete;
         SetGridSize(terrain.mapHeight * terrain.GetChunkSize, terrain.mapWidth * terrain.GetChunkSize);
 
         GridSetup();
@@ -130,7 +133,18 @@ public class Grid : MonoBehaviour
 
     public void UpdateNode(Node updateNode)
     {
+        UpdateNode(updateNode, -1);
+    }
+
+    public void UpdateNode(Node updateNode, int terrainValue)
+    {
         grid[updateNode.gridX, updateNode.gridY] = updateNode;
+
+        if (generationComplete)
+            gridNodeUpdated?.Invoke(grid[updateNode.gridX, updateNode.gridY]);
+
+        if (terrainValue != -1)
+            terrain.UpdateChunkByGridPos(updateNode.gridX, updateNode.gridY, terrainValue);
     }
 
     public Node NodeFromWorldPoint(Vector2 _worldPos)
@@ -163,5 +177,10 @@ public class Grid : MonoBehaviour
                 Gizmos.DrawCube(n.worldPos, Vector2.one * (nodeDiameter - 0.2f));
             }
         }
+    }
+
+    private void HandleGenerationComplete()
+    {
+        generationComplete = true;
     }
 }

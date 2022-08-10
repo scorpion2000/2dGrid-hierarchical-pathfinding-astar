@@ -34,6 +34,7 @@ public class ChunkSpotter : MonoBehaviour
         chunkRenderer = GetComponent<ChunkRenderer>();
 
         terrainGenerator.terrainGenerationComplete += StartChunkSpotting;
+        terrainGenerator.terrainUpdated += HandleTerrainChange;
     }
 
     private void StartChunkSpotting()
@@ -116,6 +117,13 @@ public class ChunkSpotter : MonoBehaviour
         }
     }
 
+    private void HandleTerrainChange(Vector2 pos, int chunkX, int chunkY, int terrainType)
+    {
+        GameObject chunkParent = chunkObjects[pos];
+        chunkRenderer.UpdateChunkObject(chunkParent, chunkX, chunkY, terrainType);
+    }
+
+    // Old method
     /*private IEnumerator EvaluateChunks()
     {
         while (true)
