@@ -123,6 +123,15 @@ public class ChunkSpotter : MonoBehaviour
         chunkRenderer.UpdateChunkObject(chunkParent, chunkX, chunkY, terrainType);
     }
 
+    public bool IsInRenderedChunk(Vector2 pos)
+    {
+        if (renderedChunks.Contains(terrainGenerator.GetTerrainChunkFromWorldPos(pos)))
+            return true;
+        else
+            return false;
+    }
+
+
     // Old method
     /*private IEnumerator EvaluateChunks()
     {

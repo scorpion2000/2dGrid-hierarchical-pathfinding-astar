@@ -16,6 +16,7 @@ public class ClusterManager : MonoBehaviour
     private int clusterSize;
     private Cluster[,] clusters;
     private Node[,] nodeGrid;
+    private List<Cluster> clusterUpdateList = new List<Cluster>();    // Inconsistent naming
 
     int bottomX;
     int bottomY;
@@ -40,6 +41,7 @@ public class ClusterManager : MonoBehaviour
         nodeGrid = grid.GetGrid;
 
         clusterSize = terrain.GetChunkSize;
+        StartCoroutine(ClusterRegenerationBuffer());
         StartCoroutine(GenerateClusters());
     }
 
@@ -55,7 +57,7 @@ public class ClusterManager : MonoBehaviour
                 Vector2 nodeTopRightPos = nodeGrid[bottomX + x * clusterSize + clusterSize - 1, bottomY + y * clusterSize + clusterSize - 1].worldPos;
                 clusters[x, y] = new Cluster(bottomX + x * clusterSize, bottomY + y * clusterSize, nodeBtmLeftPos, nodeTopRightPos);
                 updateUI.AddToProgress(1);
-                yield return new WaitForSeconds(0.001f);
+                yield return new WaitForFixedUpdate();
             }
         }
         StartCoroutine(BuildEntrances());
@@ -69,7 +71,7 @@ public class ClusterManager : MonoBehaviour
             {
                 CreateEntrance(clusters[x, y]);
                 updateUI.AddToProgress(1);
-                yield return new WaitForSeconds(0.001f);
+                yield return new WaitForFixedUpdate();
             }
         }
 
@@ -82,7 +84,7 @@ public class ClusterManager : MonoBehaviour
             {
                 CreateEntranceNodes(clusters[x, y]);
                 updateUI.AddToProgress(1);
-                yield return new WaitForSeconds(0.001f);
+                yield return new WaitForFixedUpdate();
             }
         }
         StartCoroutine(MakeClusterConnections());
@@ -538,9 +540,9 @@ public class ClusterManager : MonoBehaviour
         {
             for (int y = 0; y < terrain.mapHeight; y++)
             {
-                ConnectEntrances(clusters[x, y]);
+                StartCoroutine(ConnectEntrances(clusters[x, y], false));
                 updateUI.AddToProgress(1);
-                yield return new WaitForSeconds(0.01f);
+                yield return new WaitForFixedUpdate();
             }
         }
 
@@ -548,9 +550,9 @@ public class ClusterManager : MonoBehaviour
         ClusteringComplete?.Invoke();
     }
 
-    private void ConnectEntrances(Cluster cluster)
+    private IEnumerator ConnectEntrances(Cluster cluster, bool delay)
     {
-        if (cluster.GetEntranceNodes == null) return;
+        if (cluster.GetEntranceNodes == null) yield break;
         Node[,] clusterNodes = new Node[clusterSize, clusterSize];
 
         if (cluster.GetClusterNodeList == null)
@@ -575,8 +577,11 @@ public class ClusterManager : MonoBehaviour
             {
                 if (entranceNode.worldPos == connectEntranceNode.worldPos) continue;
                 PathRequestManager.RequestPath(new PathRequest(entranceNode.worldPos, connectEntranceNode.worldPos, clusterNodes, false, ClusterPathFound));
+                if (delay)
+                    yield return new WaitForFixedUpdate();
             }
         }
+        ClusterUpdated?.Invoke(cluster);
     }
 
     private void ClusterPathFound(Vector2[] newPath, bool pathSuccessful, float pathCost, bool clusterSearch)
@@ -665,6 +670,16 @@ public class ClusterManager : MonoBehaviour
         return GetClusterByNode(grid.NodeFromWorldPoint(pos));
     }
 
+    public Vector2[] GetPathFromCluster(Cluster cluster, Vector2[] pathFromTo)
+    {
+        return cluster.GetPathFromCache(pathFromTo);
+    }
+
+    public void UpdateClusterPathCache(Cluster cluster, Vector2[] pathFromTo, Vector2[] path)
+    {
+        cluster.UpdatePathCache(pathFromTo, path);
+    }
+
     private void HandleGridChange(Node node)
     {
         if (!node.walkable)
@@ -691,16 +706,10 @@ public class ClusterManager : MonoBehaviour
                     clusterNodes[node.worldPos].RemoveAllNodesFromEntrance(entrance);
                 }
 
-                /*foreach (Entrance entrance in symEntrances)
-                {
-                    clusterNodes[entrance.existingNodesInEntrance[0].worldPos].RemoveAllNodesFromEntrance(entrance);
-                }*/
-
                 CreateEntranceNodes(clusterNodes[node.worldPos]);
                 foreach (Cluster cluster in updatedClusters)
                 {
-                    ConnectEntrances(cluster);
-                    ClusterUpdated?.Invoke(cluster);
+                    StartCoroutine(ConnectEntrances(cluster, true));
                 }
             }
             else
@@ -710,10 +719,7 @@ public class ClusterManager : MonoBehaviour
         }
         else
         {
-            // Unwalkable changes could occur frequently. Imagine a game about war. Let's say, and artillery hits and
-            // changes about 5x5 tiles, but all in the same cluster. We shouldn't recalculate paths 5x5 times, but only once.
-            // Should create a buffer for this instead
-            //RegenerateClusterConnections(node);
+            RegisterNodeForBuffer(node);
         }
     }
 
@@ -721,8 +727,42 @@ public class ClusterManager : MonoBehaviour
     {
         Cluster cluster = GetClusterByNode(node);
         ClusterUpdating?.Invoke(cluster);
-        ConnectEntrances(cluster);
+        StartCoroutine(ConnectEntrances(cluster, true));
         ClusterUpdated?.Invoke(cluster);
+    }
+
+    private void RegenerateClusterConnections(Cluster cluster)
+    {
+        ClusterUpdating?.Invoke(cluster);
+        StartCoroutine(ConnectEntrances(cluster, true));
+    }
+
+    private void RegisterNodeForBuffer(Node node)
+    {
+        Cluster cluster = GetClusterByNode(node);
+
+        if (clusterUpdateList.Contains(cluster))
+            return;
+
+        clusterUpdateList.Add(cluster);
+    }
+
+    private IEnumerator ClusterRegenerationBuffer()
+    {
+        // We might want an actual condition here
+        while (true)
+        {
+            yield return new WaitForSeconds(5f);
+            if (clusterUpdateList.Count != 0)
+            {
+                foreach (Cluster node in clusterUpdateList)
+                {
+                    RegenerateClusterConnections(node);
+                }
+
+                clusterUpdateList.Clear();
+            }
+        }
     }
 
     public void OnDrawGizmos()

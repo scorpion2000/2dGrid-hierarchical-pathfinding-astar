@@ -37,9 +37,8 @@ public class Grid : MonoBehaviour
     {
         terrain = FindObjectOfType<TerrainGenerator>();
         terrain.terrainGenerationComplete += HandleGenerationComplete;
-        SetGridSize(terrain.mapHeight * terrain.GetChunkSize, terrain.mapWidth * terrain.GetChunkSize);
 
-        GridSetup();
+        //GridSetup();
     }
 
     public void SetGridSize(int x, int y)
@@ -49,6 +48,8 @@ public class Grid : MonoBehaviour
 
     public void GridSetup()
     {
+        SetGridSize(terrain.mapHeight * terrain.GetChunkSize, terrain.mapWidth * terrain.GetChunkSize);
+
         nodeDiameter = nodeRadius * 2;
         gridSizeX = Mathf.RoundToInt(gridWorldSize.x / nodeDiameter);
         gridSizeY = Mathf.RoundToInt(gridWorldSize.y / nodeDiameter);

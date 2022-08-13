@@ -32,6 +32,8 @@ public class TerrainGenerator : MonoBehaviour
     public event Action terrainGenerationComplete;
     public event Action<Vector2, int, int, int> terrainUpdated;
 
+    public float SetMagnification { set { magnification = value; } }
+    public int SetMapSize { set { mapWidth = value * 2; mapHeight = value * 2; } }
     public Dictionary<Vector2, TerrainChunk> GetTerrainChunks { get { return terrainChunks; } }
     public Dictionary<int, GameObject> GetTileset { get { return tileset; } }
     public List<Vector2> GetChunkLocations { get { return chunkLocations; } }
@@ -41,8 +43,8 @@ public class TerrainGenerator : MonoBehaviour
     {
         grid = FindObjectOfType<Grid>();
 
-        CenterMap();
-        CreateTileset();
+        //CenterMap();
+        //CreateTileset();
     }
 
     public void StartMapGeneration()
@@ -50,12 +52,12 @@ public class TerrainGenerator : MonoBehaviour
         StartCoroutine(GenerateMap());
     }
 
-    private void CenterMap()
+    public void CenterMap()
     {
         terrainParent.transform.position = new Vector2(0 - (mapWidth * chunkSize) / 2 + 0.5f, 0 - (mapHeight * chunkSize) / 2 + 0.5f);
     }
 
-    private void CreateTileset()
+    public void CreateTileset()
     {
         tileset = new Dictionary<int, GameObject>();
         for (int i = 0; i < terrainPrefabs.Length; i++)

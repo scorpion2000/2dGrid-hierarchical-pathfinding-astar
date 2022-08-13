@@ -6,6 +6,8 @@ using UnityEngine;
 public class Unit : MonoBehaviour
 {
     ClusterManager clusterManager;
+    ChunkSpotter chunkSpotter;
+    Grid grid;
 
     public bool drawGizmos;
     //public Transform target;
@@ -15,6 +17,7 @@ public class Unit : MonoBehaviour
     Vector2 heading;
     int clusterIndex;
     int targetIndex;
+    float penalty;
     Cluster currentCluster;
 
     public event Action pathFinished;
@@ -23,6 +26,8 @@ public class Unit : MonoBehaviour
     private void Start()
     {
         clusterManager = FindObjectOfType<ClusterManager>();
+        grid = FindObjectOfType<Grid>();
+        chunkSpotter = FindObjectOfType<ChunkSpotter>();
         clusterManager.ClusterUpdating += HandleClusterUpdating;
         clusterManager.ClusterUpdated += HandleClusterUpdated;
         //FindPath(target);
@@ -38,16 +43,28 @@ public class Unit : MonoBehaviour
 
     private void FollowClusterPath()
     {
-        currentCluster = clusterManager.GetClusterByPos(transform.position);
         if (clusterIndex < clusterPath.Length)
         {
-            PathRequestManager.RequestPath(new PathRequest(transform.position, clusterPath[clusterIndex], null, false, OnPathFound));
+            currentCluster = clusterManager.GetClusterByPos(transform.position);
+            Vector2[] pathFromTo = new Vector2[2] { transform.position, clusterPath[clusterIndex] };
+            Vector2[] newPath = clusterManager.GetPathFromCluster(currentCluster, pathFromTo);
+            if (newPath == null)
+                PathRequestManager.RequestPath(new PathRequest(transform.position, clusterPath[clusterIndex], null, false, OnPathFound));
+            else
+                OnPathFound(newPath);
             clusterIndex++;
         } else
         {
             clusterIndex = 0;
             pathFinished?.Invoke();
         }
+    }
+
+    public void OnPathFound(Vector2[] newPath)
+    {
+        path = newPath;
+        StopCoroutine("FollowPath");
+        StartCoroutine("FollowPath");
     }
 
     public void OnPathFound(Vector2[] newPath, bool pathSuccessful, float pathCost, bool clusterSearch)
@@ -61,6 +78,10 @@ public class Unit : MonoBehaviour
             } else
             {
                 path = newPath;
+                
+                Vector2[] pathFromTo = new Vector2[2] { path[0], path[path.Length - 1] };
+                clusterManager.UpdateClusterPathCache(currentCluster, pathFromTo, path);
+
                 StopCoroutine("FollowPath");
                 StartCoroutine("FollowPath");
             }
@@ -85,11 +106,12 @@ public class Unit : MonoBehaviour
                     FollowClusterPath();
                     yield break;
                 }
-
                 currentWaypoint = path[targetIndex];
+                penalty = grid.NodeFromWorldPoint(currentWaypoint).movementPenalty;
+                if (penalty < 1) penalty = 1f;
             }
 
-            transform.position = Vector2.MoveTowards(transform.position, currentWaypoint, speed * Time.deltaTime);
+            transform.position = Vector2.MoveTowards(transform.position, currentWaypoint, speed / penalty * Time.deltaTime);
             yield return null;
         }
     }
@@ -120,6 +142,15 @@ public class Unit : MonoBehaviour
         }*/
     }
 
+    // Checks if the unit needs to be rendered or not.
+    private void RenderCheck(Vector2 currentPos, Vector2 nextPos)
+    {
+        if (chunkSpotter.IsInRenderedChunk(currentPos) || chunkSpotter.IsInRenderedChunk(nextPos))
+            GetComponent<SpriteRenderer>().enabled = true;
+        else
+            GetComponent<SpriteRenderer>().enabled = false;
+    }
+
     public void OnDrawGizmos()
     {
         if (path != null && drawGizmos)
@@ -137,3 +168,14 @@ public class Unit : MonoBehaviour
         }
     }
 }
+
+/*public struct PathStruct {
+    Vector2 waypoint;
+    float penalty;
+
+    public PathStruct(Vector2 _waypoint, float _penalty)
+    {
+        waypoint = _waypoint;
+        penalty = _penalty;
+    }
+}*/

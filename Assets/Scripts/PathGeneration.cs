@@ -20,12 +20,14 @@ public class PathGeneration : MonoBehaviour
         clusterManager = FindObjectOfType<ClusterManager>();
         unit = GetComponent<Unit>();
 
-        clusterManager.ClusteringComplete += StartPathfinding;
+        //clusterManager.ClusteringComplete += StartPathfinding;
         unit.pathfindFailed += StartPathfinding;
         unit.pathFinished += StartPathfinding;
 
         worldHeight = 0 + terrain.mapHeight * terrain.GetChunkSize;
         worldWidth = 0 + terrain.mapWidth * terrain.GetChunkSize;
+
+        StartPathfinding();
     }
 
     public void StartPathfinding()

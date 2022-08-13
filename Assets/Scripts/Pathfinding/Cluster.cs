@@ -5,6 +5,8 @@ using UnityEngine;
 public class Cluster
 {
     Dictionary<Node, EntranceNode> entranceNodes = new Dictionary<Node, EntranceNode>();
+    Dictionary<Vector2[], Vector2[]> pathCache = new Dictionary<Vector2[], Vector2[]>();
+    List<Vector2[]> cacheKeys = new List<Vector2[]>();
     List<Entrance> entrances = new List<Entrance>();
     Node[,] clusterNodeList;
 
@@ -129,6 +131,17 @@ public class Cluster
     {
         clusterNodeList = nodes;
     }
+    public void UpdatePathCache(Vector2[] pathFromTo, Vector2[] path)
+    {
+        if (pathCache.Count >= 3)
+        {
+            pathCache.Remove(cacheKeys[0]);
+            cacheKeys.Remove(cacheKeys[0]);
+        }
+
+        pathCache.Add(pathFromTo, path);
+        cacheKeys.Add(pathFromTo);
+    }
 
     public Node[] GetExistingEntranceNodeByPos(Vector2 position)
     {
@@ -198,6 +211,14 @@ public class Cluster
         }
 
         return new Entrance();
+    }
+
+    public Vector2[] GetPathFromCache(Vector2[] pathFromTo)
+    {
+        if (pathCache.ContainsKey(pathFromTo))
+            return pathCache[pathFromTo];
+        else
+            return null;
     }
 
     public Node GetNodeBySymNodePos(Vector2 fromPos, Vector2 toPos)
