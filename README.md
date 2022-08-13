@@ -1,7 +1,7 @@
 # 2dGrid-hierarchical-pathfinding-astar
 
 The goal if this project was to generate a massive map and release as many agents on it as possible.
-On a Ryzen 5 3600 with 2x8GB DDR4 3600MHZ memory, I'm able to generate a 32x32 map with a grid size of 14 (a little over 200,000 pathfinding nodes), and release 3000 agents that continuously find new random paths from the map. With this setup, the game is running over 120FPS with very little lagspikes.
+On a Ryzen 5 3600 with 2x8GB DDR4 3600MHZ memory, I'm able to generate a 32x32 map with a grid size of 14 (a little over 200,000 pathfinding nodes), and release 2000 agents that continuously find new random paths from the map. With this setup, the game is running over 60FPS with very little lagspikes.
 I recommend a 24x24 map with a grid size of 14, and it should support approx. 2000 units without any lag spikes at all.
 
 Feel free to reuse this code. There's plenty of optimizations to be done around here.
