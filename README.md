@@ -20,7 +20,7 @@ It works, but it may take a while to generate a larger map. On the other hand, t
 !Important map generation notes!<br />
 The way it works is sort of hardcoded, but it is not meant to be a final map generator, it's more like a proof of concept prototype.<br />
 Short explanation is, we first generate the Pathfinder grid nodes, with default values (aka. everything is unwalkable, movement penalty is 0, etc..)
-We then generate a map, and as we do so, we update the grid nodes. Sebastian's original implementation relies on raycasting to figure out what tile the nodes are on.<br />
+We then generate a map, and as we do so, we update the grid nodes.<br />Sebastian's original implementation relies on raycasting to figure out what tile the nodes are on.
 This proved to be ineffective, as I would've had to store tile information in memory. This way, the generator knows the information, and passes it to the grid during generation. Now the map can truly act as nothing more than background.<br />
 Also note that the generated hills are hardcoded to be unwalkable. Again, the generator is only a prototype, I expect you to create your own.<br />
 
