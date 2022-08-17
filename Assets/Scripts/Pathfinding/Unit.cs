@@ -142,7 +142,7 @@ public class Unit : MonoBehaviour
         }*/
     }
 
-    // Checks if the unit needs to be rendered or not.
+    // Checks if a unit needs to be rendered or not.
     private void RenderCheck(Vector2 currentPos, Vector2 nextPos)
     {
         if (chunkSpotter.IsInRenderedChunk(currentPos) || chunkSpotter.IsInRenderedChunk(nextPos))

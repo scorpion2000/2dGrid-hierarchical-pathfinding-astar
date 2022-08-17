@@ -17,6 +17,7 @@ public class ClusterManager : MonoBehaviour
     private Cluster[,] clusters;
     private Node[,] nodeGrid;
     private List<Cluster> clusterUpdateList = new List<Cluster>();    // Inconsistent naming
+    private Dictionary<Cluster, List<Entrance>> entranceUpdateList = new Dictionary<Cluster, List<Entrance>>();    // Inconsistent naming
 
     int bottomX;
     int bottomY;
@@ -42,6 +43,7 @@ public class ClusterManager : MonoBehaviour
 
         clusterSize = terrain.GetChunkSize;
         StartCoroutine(ClusterRegenerationBuffer());
+        StartCoroutine(ClusterEntranceBuffer());
         StartCoroutine(GenerateClusters());
     }
 
@@ -578,7 +580,7 @@ public class ClusterManager : MonoBehaviour
                 if (entranceNode.worldPos == connectEntranceNode.worldPos) continue;
                 PathRequestManager.RequestPath(new PathRequest(entranceNode.worldPos, connectEntranceNode.worldPos, clusterNodes, false, ClusterPathFound));
                 if (delay)
-                    yield return new WaitForFixedUpdate();
+                    yield return new WaitForSeconds(0.025f);
             }
         }
         ClusterUpdated?.Invoke(cluster);
@@ -648,6 +650,8 @@ public class ClusterManager : MonoBehaviour
         Cluster clusterA = GetClusterByNode(nodeA);
         Cluster clusterB = GetClusterByNode(nodeB);
 
+        Debug.Log(clusterA.GetClusterVectorPos.x + " ; " + clusterA.gridPosBtmLeft);
+
         int x = Mathf.Abs((int)clusterA.GetClusterVectorPos.x - (int)clusterB.GetClusterVectorPos.x) / clusterSize;
         int y = Mathf.Abs((int)clusterA.GetClusterVectorPos.y - (int)clusterB.GetClusterVectorPos.y) / clusterSize;
 
@@ -686,40 +690,58 @@ public class ClusterManager : MonoBehaviour
         {
             if (clusterNodes.ContainsKey(node.worldPos))
             {
-                ClusterUpdating?.Invoke(clusterNodes[node.worldPos]);
-                List<Entrance> entrances = clusterNodes[node.worldPos].GetEntrancesByPos(node.worldPos);
-                List<Cluster> updatedClusters = new List<Cluster>();
-                updatedClusters.Add(clusterNodes[node.worldPos]);
-                foreach (Entrance entrance in entrances)
-                {
-                    Node entranceNode = entrance.existingNodesInEntrance[0];
-
-                    ClusterUpdating?.Invoke(clusterNodes[entranceNode.worldPos]);
-
-                    Node fakeSymNode = clusterNodes[entranceNode.worldPos].GetClusterSymEntrance(entranceNode);
-                    Node realSymNode = clusterNodes[fakeSymNode.worldPos].GetNodeBySymNodePos(entranceNode.worldPos, fakeSymNode.worldPos);
-                    if (realSymNode == null) Debug.Log("fuck");
-                    clusterNodes[realSymNode.worldPos].RemoveAllNodesFromEntrance(clusterNodes[realSymNode.worldPos].GetEntranceByNode(realSymNode));
-                    if (!updatedClusters.Contains(clusterNodes[realSymNode.worldPos]))
-                        updatedClusters.Add(clusterNodes[realSymNode.worldPos]);
-
-                    clusterNodes[node.worldPos].RemoveAllNodesFromEntrance(entrance);
-                }
-
-                CreateEntranceNodes(clusterNodes[node.worldPos]);
-                foreach (Cluster cluster in updatedClusters)
-                {
-                    StartCoroutine(ConnectEntrances(cluster, true));
-                }
+                Cluster cluster = clusterNodes[node.worldPos];
+                ClusterUpdating?.Invoke(cluster);
+                List<Entrance> entrances = cluster.GetEntrancesByPos(node.worldPos);
+                RebuildClusterEntrance(cluster, entrances);
             }
             else
             {
-                RegenerateClusterConnections(node);
+                Cluster cluster = GetClusterByNode(node);
+                ClusterUpdating?.Invoke(cluster);
+                List<Entrance> entrances = cluster.GetEntrancesByPos(node.worldPos);
+                RebuildClusterEntrance(cluster, entrances);
             }
         }
         else
         {
-            RegisterNodeForBuffer(node);
+            Cluster cluster = GetClusterByNode(node);
+            List<Entrance> entrances = cluster.GetEntrancesByPos(node.worldPos);
+            if (entrances.Count == 0)
+                RegisterNodeForBuffer(node);
+            else
+                foreach (Entrance entrance in entrances)
+                {
+                    RegisterEntranceForBuffer(entrance, cluster);
+                }
+        }
+    }
+
+    private void RebuildClusterEntrance(Cluster cluster, List<Entrance> entrances)
+    {
+        List<Cluster> updatedClusters = new List<Cluster>();
+        updatedClusters.Add(cluster);
+        foreach (Entrance entrance in entrances)
+        {
+            Node entranceNode = entrance.existingNodesInEntrance[0];
+
+            ClusterUpdating?.Invoke(clusterNodes[entranceNode.worldPos]);
+
+            Node fakeSymNode = clusterNodes[entranceNode.worldPos].GetClusterSymEntrance(entranceNode);
+            if (fakeSymNode == null) Debug.Log("fuck1");
+            Node realSymNode = clusterNodes[fakeSymNode.worldPos].GetNodeBySymNodePos(entranceNode.worldPos, fakeSymNode.worldPos);
+            if (realSymNode == null) Debug.Log("fuck2");
+            clusterNodes[realSymNode.worldPos].RemoveAllNodesFromEntrance(clusterNodes[realSymNode.worldPos].GetEntranceByNode(realSymNode));
+            if (!updatedClusters.Contains(clusterNodes[realSymNode.worldPos]))
+                updatedClusters.Add(clusterNodes[realSymNode.worldPos]);
+
+            cluster.RemoveAllNodesFromEntrance(entrance);
+        }
+
+        CreateEntranceNodes(cluster);
+        foreach (Cluster iCluster in updatedClusters)
+        {
+            StartCoroutine(ConnectEntrances(iCluster, true));
         }
     }
 
@@ -747,6 +769,25 @@ public class ClusterManager : MonoBehaviour
         clusterUpdateList.Add(cluster);
     }
 
+    private void RegisterEntranceForBuffer(Entrance entrance, Cluster cluster)
+    {
+        if (entranceUpdateList.ContainsKey(cluster))
+            if (entranceUpdateList[cluster].Contains(entrance))
+                return;
+            else
+            {
+                List<Entrance> entrances = entranceUpdateList[cluster];
+                entrances.Add(entrance);
+                entranceUpdateList.Add(cluster, entrances);
+            }
+        else
+        {
+            List<Entrance> entrances = new List<Entrance>();
+            entrances.Add(entrance);
+            entranceUpdateList.Add(cluster, entrances);
+        }
+    }
+
     private IEnumerator ClusterRegenerationBuffer()
     {
         // We might want an actual condition here
@@ -761,6 +802,24 @@ public class ClusterManager : MonoBehaviour
                 }
 
                 clusterUpdateList.Clear();
+            }
+        }
+    }
+
+    private IEnumerator ClusterEntranceBuffer()
+    {
+        // We might want an actual condition here
+        while (true)
+        {
+            yield return new WaitForSeconds(5f);
+            if (entranceUpdateList.Count != 0)
+            {
+                foreach (KeyValuePair<Cluster, List<Entrance>> keyPair in entranceUpdateList)
+                {
+                    RebuildClusterEntrance(keyPair.Key, keyPair.Value);
+                }
+
+                entranceUpdateList.Clear();
             }
         }
     }

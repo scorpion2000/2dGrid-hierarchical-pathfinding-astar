@@ -86,7 +86,7 @@ public class TerrainGenerator : MonoBehaviour
 
                         Node node = grid.NodeFromWorldPoint(new Vector2(terrainParent.transform.position.x + i + x * chunkSize, terrainParent.transform.position.y + j + y * chunkSize));
                         node.SetWalkable = (tileId == 3) ? false : true;
-                        node.movementPenalty = tileId * 5;
+                        node.movementPenalty = tileId * 15;
                         grid.UpdateNode(node);
                     }
                 }

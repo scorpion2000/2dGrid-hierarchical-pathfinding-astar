@@ -131,6 +131,7 @@ public class Cluster
     {
         clusterNodeList = nodes;
     }
+
     public void UpdatePathCache(Vector2[] pathFromTo, Vector2[] path)
     {
         if (pathCache.Count >= 3)
