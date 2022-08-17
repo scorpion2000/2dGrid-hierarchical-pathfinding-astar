@@ -14,7 +14,7 @@ Note that I did not implement his path smoothing algorithm into my own pathfinde
 As for the Hierarchical Pathfinding, big thanks to this paper ( https://webdocs.cs.ualberta.ca/~mmueller/ps/hpastar.pdf ). The implementation loosely came from this.<br />
 It should've been easier to implement HPA*, and I'm pretty sure I've over engineered it to hell and beyond.<br />
 
-And lastly, please note that this implementation works with a randomly generated map. I'm also planning to extend the functionality so that the grid/clusters react to changes in the world map.<br />
+And lastly, please note that this implementation works with a randomly generated map. ~~I'm also planning to extend the functionality so that the grid/clusters react to changes in the world map.~~ Done. It reacts to map change. Make sure you call the Grid.UpdateNode() function.<br />
 It works, but it may take a while to generate a larger map. On the other hand, this code should be able to work with any map size (limited by your computer)<br />
 
 !Important map generation notes!<br />
