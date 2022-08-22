@@ -650,8 +650,6 @@ public class ClusterManager : MonoBehaviour
         Cluster clusterA = GetClusterByNode(nodeA);
         Cluster clusterB = GetClusterByNode(nodeB);
 
-        Debug.Log(clusterA.GetClusterVectorPos.x + " ; " + clusterA.gridPosBtmLeft);
-
         int x = Mathf.Abs((int)clusterA.GetClusterVectorPos.x - (int)clusterB.GetClusterVectorPos.x) / clusterSize;
         int y = Mathf.Abs((int)clusterA.GetClusterVectorPos.y - (int)clusterB.GetClusterVectorPos.y) / clusterSize;
 
